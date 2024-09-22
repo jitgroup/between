@@ -25,7 +25,7 @@ class CreateAnnouncement(StatesGroup):
     description = State()
 
 
-BOT_TOKEN = '7224050581:AAHrb6hnOAZ5OlUudb0dsmz-uin6DxtHNZU'
+BOT_TOKEN = '7772570601:AAHXVRrwgjxQ4XwstKILLOj1M_ONrSt8PYY'
 bot = Bot(
     token = BOT_TOKEN, 
     default = DefaultBotProperties(
