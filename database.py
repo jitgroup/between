@@ -11,7 +11,9 @@ async def create_table():
                 user_id BIGINT,
                 user_type VARCHAR(255),
                 full_name VARCHAR(255),
-                phone_number VARCHAR(255)
+                phone_number VARCHAR(255),
+                company_name VARCHAR(255),
+                company_photo TEXT
             )
         """)
 
@@ -49,14 +51,14 @@ async def get_user(user_id: int):
         return user
 
 
-async def create_user(user_id: int, phone_number: str, full_name: str):
+async def create_user(user_id: int, phone_number: str, full_name: str, company_name: str = None, company_photo: str = None, user_type: str = 'user'):
     async with aiosqlite.connect('main.db') as connection:
         cursor = await connection.cursor()
 
         await cursor.execute(
             f"""
-            INSERT INTO users (user_id, phone_number, full_name, user_type)
-            VALUES ({user_id}, '{phone_number}', '{full_name}', 'user')
+            INSERT INTO users (user_id, phone_number, full_name, user_type, company_name, company_photo)
+            VALUES ({user_id}, '{phone_number}', '{full_name}', '{user_type}', '{company_name}', '{company_photo}')
             """
         )
 
