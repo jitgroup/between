@@ -24,6 +24,9 @@ class CreateAnnouncement(StatesGroup):
     title = State()
     description = State()
 
+class AnswerAnnouncement(StatesGroup):
+    answer = State()
+
 
 BOT_TOKEN = '7224050581:AAHrb6hnOAZ5OlUudb0dsmz-uin6DxtHNZU'
 bot = Bot(
@@ -125,24 +128,81 @@ async def announcement_description_handler(message: types.Message, state: FSMCon
     title = data['title']
     description = message.text
     
-    await db.create_announcement(from_user_id=message.from_user.id, title=title, description=description)
-    await message.answer("E'lon muvaffaqiyatli yaratildi!")
+    announcement = await db.create_announcement(from_user_id=message.from_user.id, title=title, description=description)
+    announcement_msg = await message.answer(f"""⚠️ E'LON ⚠️
+                                       
+<b>{title}</b>
+<i>E'lon xaqida: {description}</i>""")
+    await message.answer("E'lon muvaffaqiyatli yaratildi!", reply_to_message_id=announcement_msg.message_id)
     await state.clear()
 
     users = await db.get_users_list()
     for user in users:
-        await bot.send_message(user[0], f"""E'LON               
+        await bot.send_message(user[0], f"""⚠️ E'LON ⚠️
+                                       
 <b>{title}</b>
-
-<i>{description}</i>""", reply_markup=InlineKeyboardMarkup(
+<i>E'lon xaqida: {description}</i>""", reply_markup=InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Javob yozish", callback_data='answer')
+                InlineKeyboardButton(text="Javob yozish", callback_data=f'announcement_{announcement_msg.message_id}_{announcement[0]}')
             ]
         ]
     ))
 
 
+@dp.callback_query(F.data.startswith('announcement_'))
+async def answer_announcement_handler(call: types.CallbackQuery, state: FSMContext):
+    announcement_id = call.data.split("_")[-1]
+    announcement_msg_id = call.data.split("_")[1]
+    announcement = await db.get_announcement(announcement_id)
+
+    await state.set_state(AnswerAnnouncement.answer)
+    await state.update_data(announcement=announcement, 
+                            message_id=call.message.message_id, business_account_message_id=announcement_msg_id)
+    await call.message.edit_reply_markup()
+    await call.message.answer(
+        f"Javob yozing!\n\n<i>Siz ushbu e'longa javob yozyapsiz</i>",
+        reply_to_message_id=call.message.message_id)
+
+
+@dp.message(F.content_type == 'text', StateFilter(AnswerAnnouncement.answer))
+async def announcement_title_handler(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    message_id = data['message_id']
+    announcement = data['announcement']
+    business_account_message_id = data['business_account_message_id']
+    user = await db.get_user(message.from_user.id)
+    
+    try:
+        await bot.send_message(chat_id=announcement[1], text=f"""E'LON JAVOBI!
+
+{message.text}""", reply_to_message_id=business_account_message_id, reply_markup=InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text=f"{user[2]}", url=f"https://t.me/{message.from_user.username}")],
+                [InlineKeyboardButton(text=f"Qabul qilish ✅", callback_data=f"accept_user")],
+    ]
+))
+    except:
+        await bot.send_message(chat_id=announcement[1], text=f"""E'LON JAVOBI!
+
+{message.text}""", reply_markup=InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text=f"{user[2]}", url=f"https://t.me/{message.from_user.username}")],
+                [InlineKeyboardButton(text=f"Qabul qilish ✅", callback_data=f"accept_user")],
+    ]
+))
+    await bot.edit_message_reply_markup(
+        message_id=message_id, chat_id=message.chat.id,
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="Javob yozish", callback_data=f'announcement_{announcement[0]}')
+                ]
+            ]
+        ))
+    
+    await message.answer("Javob yuborildi!")
+    await state.clear()
 
 # ------------------------------------------
 

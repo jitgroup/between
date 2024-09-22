@@ -57,9 +57,12 @@ async def create_announcement(from_user_id: int, title: str, description: str):
         dt = datetime.datetime.now()
         await cursor.execute(f"""INSERT INTO announcements (from_user_id, created_at, title, description)
                          VALUES ({from_user_id}, '{dt}', '{title}', '{description}')""")
+        announcement = await (await cursor.execute(f"""SELECT * FROM announcements 
+                                                  WHERE from_user_id = {from_user_id} 
+                                                  ORDER BY id DESC LIMIT 1""")).fetchone()
         await connect.commit()
 
-        return None
+        return announcement
 
 
 async def get_users_list():
@@ -70,3 +73,13 @@ async def get_users_list():
         await connect.commit()
 
         return users
+    
+
+async def get_announcement(announcement_id: int):
+    async with aiosqlite.connect('main.db') as connect:
+        cursor = await connect.cursor()
+
+        announcement = await (await cursor.execute(f"""SELECT * FROM announcements WHERE id = {announcement_id}""")).fetchone()
+        await connect.commit()
+
+        return announcement
